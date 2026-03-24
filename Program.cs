@@ -18,6 +18,8 @@ else
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connection));
 
+builder.Services.AddScoped<backend_purchase_order.Services.OrderService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
