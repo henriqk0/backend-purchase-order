@@ -23,7 +23,7 @@ public class User
     {
         SetEmail(email);
         SetPassword(password);
-        Role = role;
+        SetRole(role);
     }
 
     public void SetEmail(string email)
@@ -41,6 +41,15 @@ public class User
             throw new ArgumentException("Password cannot be empty");
 
         PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+    }
+
+    // Levanta um erro se o inteiro representante do role não estiver definido no Enum
+    public void SetRole(UserRole role)
+    {
+        if (!Enum.IsDefined(typeof(UserRole), role))
+            throw new ArgumentException("Invalid user role");
+
+        Role = role;
     }
 
     // Para verificar se a senha de entrada é igual à senha criptografada do objeto Usuário

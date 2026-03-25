@@ -4,8 +4,8 @@ using backend_purchase_order.Models.Enums;
 namespace backend_purchase_order.Models;
 
 /// <summary>
-/// Classe de relacionamento entre Usuários e Pedidos.
-/// Cada pedido pode estar relacionado a vários usuários
+/// Classe de relacionamento entre diversos Usuários e diversos Pedidos 
+/// com respeito ao tipo de ação e o momento em que foi feito
 /// </summary>
 public class OrderActionHistory
 {
@@ -18,16 +18,12 @@ public class OrderActionHistory
     public DateOnly DateAction { get; private set; }
     public TimeOnly TimeAction { get; private set; }
 
-
     public OrderActionHistory() { }
 
-    // Para garantir que há instancias de Pedido e de Usuário para a construção do objeto
-    // Se order ou user recebidos for nulos, ou se o inteiro da acao nao existir no enum,
-    // ou se a data + hora da ação for no futuro, levanta um erro
-    public OrderActionHistory(Order order, User user, DateOnly dateAction, TimeOnly timeAction, ActionType actionType)
+    // O construtor da entidade não verifica se o userId e o orderId existem atualmente, pois isto subentende-se estar sendo 
+    // verificado pelo banco e optou-se por nao levantar um erro antes disso
+    public OrderActionHistory(int orderId, int userId, DateOnly dateAction, TimeOnly timeAction, ActionType actionType)
     {
-        Order = order ?? throw new ArgumentNullException(nameof(order));
-        ResponsibleUser = user ?? throw new ArgumentNullException(nameof(user));
         var dateTime = dateAction.ToDateTime(timeAction);
 
         if (dateTime < DateTime.Now)
@@ -38,6 +34,9 @@ public class OrderActionHistory
 
         if (!Enum.IsDefined(typeof(ActionType), actionType))
             throw new ArgumentException("Invalid action");
+
+        OrderId = orderId;
+        UserId = userId;
 
         ActionType = actionType;
     }

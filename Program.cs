@@ -19,6 +19,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connection));
 
 builder.Services.AddScoped<backend_purchase_order.Services.OrderService>();
+builder.Services.AddScoped<backend_purchase_order.Services.OrderActionHistoryService>();
 
 var app = builder.Build();
 

@@ -13,17 +13,18 @@ public class OrderActionHistoryService(AppDbContext context)
     /// Salva o objeto OrderActionHistory no banco no momento em que a ação for tomada, já com os relacionamentos
     /// entre o usuário responsável pela ação e o pedido 
     /// </summary>
-    /// <param name="order">O objeto Pedido</param>
+    /// <param name="orderId">O id do Pedido</param>
+    /// <param name="actionMakerId">O id do Fazedor da Ação</param>
     /// <param name="actionType">O tipo de ação</param>
     /// <returns></returns>
-    public async Task<OrderActionHistory> RecordActionInHistory(Order order, ActionType actionType)
+    public async Task<OrderActionHistory> RecordActionInHistoryNow(int orderId, int actionMakerId, ActionType actionType)
     {
         DateTime nowAction = DateTime.Now;
 
         DateOnly currentDate = DateOnly.FromDateTime(nowAction);
         TimeOnly currentTime = TimeOnly.FromDateTime(nowAction);
 
-        var orderHistory = new OrderActionHistory(order, order.OrderMaker, currentDate, currentTime, actionType);
+        var orderHistory = new OrderActionHistory(orderId, actionMakerId, currentDate, currentTime, actionType);
         _context.OrderActionHistory.Add(orderHistory);
 
         await _context.SaveChangesAsync();
@@ -34,13 +35,13 @@ public class OrderActionHistoryService(AppDbContext context)
     /// <summary>
     /// Realiza as regras de negócio relativas ao aprovador (só pode aprovar ou requisitar review)
     /// </summary>
-    /// <param name="orderActionDto"></param>
+    /// <param name="approverActionDto">Dto contendo o id do Pedido, o id do Usuário, o papel do Usuário e o tipo da ação</param>
     /// <returns>O objeto criado que representa a ação tomada no pedido pelo aprovador</returns>
     /// <exception cref="ArgumentException"></exception>
-    public async Task<OrderActionHistory> RecordApproverAction(OrderActionDto orderActionDto)
+    public async Task<OrderActionHistory> RecordApproverAction(RecordApproverActionDto approverActionDto)
     {
         var lastActionAtOrder = await _context.OrderActionHistory
-            .Where(orderActHist => orderActHist.OrderId == orderActionDto.Order.Id)
+            .Where(orderActHist => orderActHist.OrderId == approverActionDto.OrderId)
             .OrderByDescending(orderActHist => orderActHist.Id)
             .FirstOrDefaultAsync();
 
@@ -49,37 +50,108 @@ public class OrderActionHistoryService(AppDbContext context)
             || lastActionAtOrder.ActionType == ActionType.RequestForReview)
             throw new ArgumentException($"Invalid order to take an action");
 
-
-        // Se o inteiro de ação recebido no DTO não corresponder a uma ação enumerada, ou
+        // Se o inteiro de ação recebido no DTO 
         // não for nem de aprovação e nem de solicitar revisão, também levanta um erro
-        if (!Enum.IsDefined(typeof(ActionType), orderActionDto.ActionType) ||
-                (orderActionDto.ActionType != ActionType.Approbation 
-                && orderActionDto.ActionType != ActionType.RequestForReview))
+        if (!Enum.IsDefined(typeof(ActionType), approverActionDto.ActionType) ||
+                (approverActionDto.ActionType != ActionType.Approbation
+                && approverActionDto.ActionType != ActionType.RequestForReview))
             throw new ArgumentException("Invalid action");
 
         var userRoleInLastOrderAction = lastActionAtOrder.ResponsibleUser.Role;
-        var userRoleFromDTO = orderActionDto.User.Role;
+        var userRoleFromDTO = approverActionDto.ApproverRole;
         var price = lastActionAtOrder.Order.TotalValue;
 
         // Nenhum usuário de setor algum pode tomar uma ação se o setor anterior não o tomou.
-        // Usuários do mesmo setor também não podem alterar uma definição já existente pelo mesmo setor
+        // Usuários do mesmo setor também não podem alterar uma definição já existente pelo mesmo setor.
+        // Esta lógica só funciona caso APENAS colaboradores façam pedidos (como modelado no código)
         if (userRoleFromDTO == userRoleInLastOrderAction || userRoleFromDTO != userRoleInLastOrderAction + 1)
             throw new ArgumentException("Action cannot be taken before the lower hierarchy");
 
-        var approverOrderHistoryAction = await RecordActionInHistory(orderActionDto.Order, orderActionDto.ActionType);
+        var approverOrderHistoryAction = await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, approverActionDto.ActionType);
 
         // Se o pedido for de aprovação, então podemos concluí-lo dependendo das aprovações anteriores:
-        if (orderActionDto.ActionType == ActionType.Approbation)
+        if (approverActionDto.ActionType == ActionType.Approbation)
             // Se o preco for inferior a 100, também conclui o pedido
             if (price <= 100)
-                await RecordActionInHistory(orderActionDto.Order, ActionType.Concluison);
+                await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, ActionType.Concluison);
             // Caso caso esteja entre 100.00000...1 e 1000, e o setor de Suprimentos já aprovou
             else if (price <= 1000 && userRoleInLastOrderAction == UserRole.SupplyDepartment)
-                await RecordActionInHistory(orderActionDto.Order, ActionType.Concluison);
+                await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, ActionType.Concluison);
             // Caso contrário e o diretor é o último a aprovar, então também podemos concluir o pedido. 
             else if (userRoleInLastOrderAction == UserRole.Manager)
-                await RecordActionInHistory(orderActionDto.Order, ActionType.Concluison);
+                await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, ActionType.Concluison);
 
         return approverOrderHistoryAction;
+    }
+
+    /// <summary>
+    /// Realiza as regras de negócio relativas ao colaborador (só pode criar ou reenviar pedidos)
+    /// </summary>
+    /// <param name="collaboratorActionDto">Dto contendo o id do Pedido, o id do Usuário e o tipo da ação</param>
+    /// <returns>O objeto criado que representa a ação tomada no pedido pelo aprovador</returns>
+    /// <exception cref="ArgumentException">Verifica o tipo do usuário, para evitar que aprovadores criem pedido</exception>
+    public async Task<OrderActionHistory> RecordCollaboratorAction(RecordActionDto collaboratorActionDto)
+    {
+        // Se o inteiro de ação recebido no DTO não corresponder a uma ação enumerada, ou
+        // não for nem de criação e nem de reenvio, também levanta um erro
+        if (collaboratorActionDto.ActionType != ActionType.Creation
+                && collaboratorActionDto.ActionType != ActionType.Resend)
+            throw new ArgumentException("Invalid action");
+
+        var approverOrderHistoryAction = await RecordActionInHistoryNow(
+            collaboratorActionDto.OrderId, collaboratorActionDto.ActionMakerId, collaboratorActionDto.ActionType
+        );
+
+        return approverOrderHistoryAction;
+    }
+
+    /// <summary>
+    /// Registra a ação de acordo com o tipo do usuário e tipo de ação no DTO
+    /// </summary>
+    /// <param name="recordActionDto">DTO agnostico ao tipo do usuario, contendo id do usuario, id do pedido e acao</param>
+    /// <returns>Objeto OrderActionHistory</returns>
+    /// <exception cref="ArgumentException">Usuario ou Pedido invalidos</exception>
+    public async Task<OrderActionHistory> RecordAgnosticAction(RecordActionDto recordActionDto)
+    {
+        var user = await _context.User.FindAsync(recordActionDto.ActionMakerId);
+        var order = await _context.User.FindAsync(recordActionDto.OrderId);
+
+        // Levanta um erro se o usuário ou o pedido não existam após as consultas acima
+        if (user == null || order == null)
+            throw new ArgumentException("User or Order not found");
+
+        // Também levanta um erro caso a ação seja de criação e o usuário não seja colaborador 
+        if (user.Role != UserRole.Collaborator && recordActionDto.ActionType == ActionType.Creation)
+            throw new ArgumentException("Only existing collaborators can create orders");
+
+        // Se o inteiro de ação recebido no DTO não corresponder a uma ação enumerada, também levanta um erro
+        if (!Enum.IsDefined(typeof(ActionType), recordActionDto.ActionType))
+            throw new ArgumentException("This action does not exist");
+
+        // Se for um colaborador, chama método para regras de negócio de registro de ação do colaborador,
+        // caso não seja, mas o papel do usuário for válido, 
+        // chama o método para regras de negório de registro de ação dos outros pepéis. Se nenhuma destas condições,
+        // levanta um Erro pelo papel do Usuário fornecido ter sido inválido 
+        OrderActionHistory orderActionHistory;
+        if (user.Role == UserRole.Collaborator)
+        {
+            orderActionHistory = await RecordCollaboratorAction(recordActionDto);
+        }
+        else if (Enum.IsDefined(typeof(UserRole), user.Role))
+        {
+            var approverActionDto = new RecordApproverActionDto(
+                recordActionDto.ActionMakerId,
+                recordActionDto.OrderId,
+                recordActionDto.ActionType,
+                user.Role
+            );
+            orderActionHistory = await RecordApproverAction(approverActionDto);
+        }
+        else
+        {
+            throw new ArgumentException("Invalid role indentifier from user");
+        }
+
+        return orderActionHistory;
     }
 }

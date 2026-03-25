@@ -22,5 +22,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<OrderActionHistory>()
             .HasIndex(io => new { io.UserId, io.OrderId })
             .IsUnique();
+
+        modelBuilder.Entity<OrderActionHistory>()
+            .HasOne(oah => oah.Order)
+            .WithMany()
+            .HasForeignKey(oah => oah.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

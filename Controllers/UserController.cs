@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace backend_purchase_order.Controllers;
 
 /// <summary>
-/// Classe para controle dos endpoints relativos aos usuários
+/// Classe para controle dos endpoints relativos aos usuarios
+/// TODO: adicionar um UserService lidando com Autorizacoeses e Autenticacoes, p.ex. com JWT, mais complexas
 /// </summary>
 [Route("api/[controller]")]
 public class UserController(AppDbContext context) : ControllerBase
