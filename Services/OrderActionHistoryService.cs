@@ -128,24 +128,26 @@ public class OrderActionHistoryService(AppDbContext context)
         if (!Enum.IsDefined(typeof(ActionType), recordActionDto.ActionType))
             throw new ArgumentException("This action does not exist");
 
-        // Se for um colaborador, chama método para regras de negócio de registro de ação do colaborador,
-        // caso não seja, mas o papel do usuário for válido, 
-        // chama o método para regras de negório de registro de ação dos outros pepéis. Se nenhuma destas condições,
-        // levanta um Erro pelo papel do Usuário fornecido ter sido inválido 
+        // Se um papel definido e for um colaborador, chama método para regras de negócio de registro de ação do colaborador, 
+        // ou chama o método para regras de negório de registro de ação dos outros pepéis (aprovador), se ele existir. 
+        // Caso contrário levanta um Erro pelo papel do Usuário fornecido ter sido inválido 
         OrderActionHistory orderActionHistory;
-        if (user.Role == UserRole.Collaborator)
+        if (Enum.IsDefined(typeof(UserRole), user.Role))
         {
-            orderActionHistory = await RecordCollaboratorAction(recordActionDto);
-        }
-        else if (Enum.IsDefined(typeof(UserRole), user.Role))
-        {
-            var approverActionDto = new RecordApproverActionDto(
-                recordActionDto.ActionMakerId,
-                recordActionDto.OrderId,
-                recordActionDto.ActionType,
-                user.Role
-            );
-            orderActionHistory = await RecordApproverAction(approverActionDto);
+            if (user.Role == UserRole.Collaborator)
+            {
+                orderActionHistory = await RecordCollaboratorAction(recordActionDto);
+            }
+            else 
+            {
+                var approverActionDto = new RecordApproverActionDto(
+                    recordActionDto.ActionMakerId,
+                    recordActionDto.OrderId,
+                    recordActionDto.ActionType,
+                    user.Role
+                );
+                orderActionHistory = await RecordApproverAction(approverActionDto);
+            }
         }
         else
         {
