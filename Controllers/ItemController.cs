@@ -1,4 +1,5 @@
 using backend_purchase_order.Models;
+using backend_purchase_order.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace backend_purchase_order.Controllers;
 /// <summary>
 /// Classe para controle dos endpoints relativos aos itens
 /// </summary>
+[ApiController]
 [Route("api/[controller]")]
 public class ItemController(AppDbContext context) : ControllerBase
 {
@@ -30,8 +32,11 @@ public class ItemController(AppDbContext context) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Item>> Post(Item item)
+    public async Task<ActionResult<Item>> Post(ItemDto itemDto)
+
     {
+        var item = new Item((int)itemDto.Value, itemDto.Name);
+
         _context.Item.Add(item);
         await _context.SaveChangesAsync();
 
@@ -39,8 +44,10 @@ public class ItemController(AppDbContext context) : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Put(int id, Item item)
+    public async Task<IActionResult> Put(int id, ItemDto itemDto)
     {
+        var item = new Item((int)itemDto.Value, itemDto.Name);
+
         if (id != item.Id)
             return BadRequest();
 

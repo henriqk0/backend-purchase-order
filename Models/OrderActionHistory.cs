@@ -26,7 +26,7 @@ public class OrderActionHistory
     {
         var dateTime = dateAction.ToDateTime(timeAction);
 
-        if (dateTime < DateTime.Now)
+        if (dateTime < DateTime.Now.AddMinutes(-1))
             throw new ArgumentException("Invalid schedule");
 
         DateAction = dateAction;

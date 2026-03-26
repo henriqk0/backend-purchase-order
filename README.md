@@ -21,17 +21,12 @@ Siga estas etapas para executar a aplicação em sua máquina local e acessar os
 2. **Configure a String de Conexão do Banco de Dados:**
    A aplicação requer a `DefaultConnection` para conectar-se ao banco de dados. No ambiente de desenvolvimento,
    que é o caso desta aplicação, o banco foi utilizado via Conteiner Docker do SQLServer. Neste caso, o computador
-   precisa ter o Docker instalado para acessa-lo via CLI.
+   precisa ter o Docker instalado para acessa-lo via CLI, e para isto recomenda-se utilizar um sistema Linux/Unix.
 
    **Acesso via Docker:**
 
    ```zsh
-      docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=SenhaForte123!' -p 1433:1433 --name sqlserver -d mcr.microsoft.com/mssql/server:2022-latest
-      ## Em seguida:
-      docker exec -it sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'SenhaForte123!'
-
-      CREATE DATABASE MeuBanco;
-      GO
+      docker compose up -d
    ```
 
    _(Alternativamente, você pode criar/editar o arquivo `appsettings.Development.json` e adicionar a string de conexão sob `ConnectionStrings`)_

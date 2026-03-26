@@ -41,20 +41,26 @@ public class OrderActionHistoryService(AppDbContext context)
     public async Task<OrderActionHistory> RecordApproverAction(RecordApproverActionDto approverActionDto)
     {
         var lastActionAtOrder = await _context.OrderActionHistory
+            .Include(orderActHist => orderActHist.ResponsibleUser)
+            .Include(orderActHist => orderActHist.Order)
             .Where(orderActHist => orderActHist.OrderId == approverActionDto.OrderId)
             .OrderByDescending(orderActHist => orderActHist.Id)
             .FirstOrDefaultAsync();
 
-        // Se o pedido foi concluido ou se aguarda revisão ou se não foi criado, o aprovador não pode tomar uma ação
-        if (lastActionAtOrder == null || lastActionAtOrder.ActionType == ActionType.Concluison
-            || lastActionAtOrder.ActionType == ActionType.RequestForReview)
+        // Se o pedido foi concluido/cancelado ou se aguarda revisão ou se não foi criado, o aprovador não pode tomar uma ação
+        if (lastActionAtOrder == null
+            || lastActionAtOrder.ActionType == ActionType.Concluison
+            || lastActionAtOrder.ActionType == ActionType.RequestForReview
+            || lastActionAtOrder.ActionType == ActionType.Cancel)
             throw new ArgumentException($"Invalid order to take an action");
 
         // Se o inteiro de ação recebido no DTO 
-        // não for nem de aprovação e nem de solicitar revisão, também levanta um erro
-        if (!Enum.IsDefined(typeof(ActionType), approverActionDto.ActionType) ||
-                (approverActionDto.ActionType != ActionType.Approbation
-                && approverActionDto.ActionType != ActionType.RequestForReview))
+        // não for nem de aprovação e nem de solicitar revisão e nem de cancelamento, também levanta um erro
+        if (
+                approverActionDto.ActionType != ActionType.Approbation
+                && approverActionDto.ActionType != ActionType.RequestForReview
+                && approverActionDto.ActionType != ActionType.Cancel
+            )
             throw new ArgumentException("Invalid action");
 
         var userRoleInLastOrderAction = lastActionAtOrder.ResponsibleUser.Role;
@@ -89,13 +95,26 @@ public class OrderActionHistoryService(AppDbContext context)
     /// </summary>
     /// <param name="collaboratorActionDto">Dto contendo o id do Pedido, o id do Usuário e o tipo da ação</param>
     /// <returns>O objeto criado que representa a ação tomada no pedido pelo aprovador</returns>
-    /// <exception cref="ArgumentException">Verifica o tipo do usuário, para evitar que aprovadores criem pedido</exception>
+    /// <exception cref="ArgumentException">Verifica o tipo de ação do parêmetro e se é compatível com ações passadas
+    /// neste mesmo pedido</exception>
     public async Task<OrderActionHistory> RecordCollaboratorAction(RecordActionDto collaboratorActionDto)
     {
-        // Se o inteiro de ação recebido no DTO não corresponder a uma ação enumerada, ou
-        // não for nem de criação e nem de reenvio, também levanta um erro
-        if (collaboratorActionDto.ActionType != ActionType.Creation
-                && collaboratorActionDto.ActionType != ActionType.Resend)
+        var lastActionAtOrder = await _context.OrderActionHistory
+            .Where(orderActHist => orderActHist.OrderId == collaboratorActionDto.OrderId)
+            .OrderByDescending(orderActHist => orderActHist.Id)
+            .FirstOrDefaultAsync();
+
+        // Se o já há uma última ação no pedido, e não foi de solicitação de revisão, o colaborador não pode tomar uma ação
+        if (lastActionAtOrder != null && lastActionAtOrder.ActionType != ActionType.RequestForReview)
+            throw new ArgumentException("You can only take action on the request made as long as no revisions have been requested");
+
+        // Se ha uma acao no pedido, e a nova acao do colaborador nao eh de reenvio, ou se nao ha uma acao neste pedido 
+        // e a acao do colaborador nao eh de criacao, tambem levanta um erro 
+        if (
+            (lastActionAtOrder != null && collaboratorActionDto.ActionType != ActionType.Resend)
+                ||
+            (lastActionAtOrder == null && collaboratorActionDto.ActionType != ActionType.Creation)
+        )
             throw new ArgumentException("Invalid action");
 
         var approverOrderHistoryAction = await RecordActionInHistoryNow(
@@ -108,28 +127,25 @@ public class OrderActionHistoryService(AppDbContext context)
     /// <summary>
     /// Registra a ação de acordo com o tipo do usuário e tipo de ação no DTO
     /// </summary>
-    /// <param name="recordActionDto">DTO agnostico ao tipo do usuario, contendo id do usuario, id do pedido e acao</param>
+    /// <param name="recordActionDto">DTO agnostico ao tipo do usuario, contendo id do usuario, id do pedido e acao
+    /// </param>
     /// <returns>Objeto OrderActionHistory</returns>
     /// <exception cref="ArgumentException">Usuario ou Pedido invalidos</exception>
     public async Task<OrderActionHistory> RecordAgnosticAction(RecordActionDto recordActionDto)
     {
         var user = await _context.User.FindAsync(recordActionDto.ActionMakerId);
-        var order = await _context.User.FindAsync(recordActionDto.OrderId);
+        var order = await _context.Order.FindAsync(recordActionDto.OrderId);
 
         // Levanta um erro se o usuário ou o pedido não existam após as consultas acima
         if (user == null || order == null)
             throw new ArgumentException("User or Order not found");
-
-        // Também levanta um erro caso a ação seja de criação e o usuário não seja colaborador 
-        if (user.Role != UserRole.Collaborator && recordActionDto.ActionType == ActionType.Creation)
-            throw new ArgumentException("Only existing collaborators can create orders");
 
         // Se o inteiro de ação recebido no DTO não corresponder a uma ação enumerada, também levanta um erro
         if (!Enum.IsDefined(typeof(ActionType), recordActionDto.ActionType))
             throw new ArgumentException("This action does not exist");
 
         // Se um papel definido e for um colaborador, chama método para regras de negócio de registro de ação do colaborador, 
-        // ou chama o método para regras de negório de registro de ação dos outros pepéis (aprovador), se ele existir. 
+        // ou chama o método para regras de negório de registro de ação dos outros pepéis (aprovadores), se ele existir. 
         // Caso contrário levanta um Erro pelo papel do Usuário fornecido ter sido inválido 
         OrderActionHistory orderActionHistory;
         if (Enum.IsDefined(typeof(UserRole), user.Role))
@@ -138,7 +154,7 @@ public class OrderActionHistoryService(AppDbContext context)
             {
                 orderActionHistory = await RecordCollaboratorAction(recordActionDto);
             }
-            else 
+            else
             {
                 var approverActionDto = new RecordApproverActionDto(
                     recordActionDto.ActionMakerId,
@@ -155,5 +171,10 @@ public class OrderActionHistoryService(AppDbContext context)
         }
 
         return orderActionHistory;
+    }
+
+    public async Task<OrderActionHistory?> GetOrderHistoryByIdAsync(int id)
+    {
+        return await _context.OrderActionHistory.FindAsync(id);
     }
 }

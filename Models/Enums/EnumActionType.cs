@@ -10,5 +10,6 @@ public enum ActionType
     Approbation = 2,
     RequestForReview = 3,
     Resend = 4,
-    Concluison = 5
+    Concluison = 5,
+    Cancel = 6
 }

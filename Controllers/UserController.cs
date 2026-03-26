@@ -1,4 +1,5 @@
 using backend_purchase_order.Models;
+using backend_purchase_order.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,8 +7,9 @@ namespace backend_purchase_order.Controllers;
 
 /// <summary>
 /// Classe para controle dos endpoints relativos aos usuarios
-/// TODO: adicionar um UserService lidando com Autorizacoeses e Autenticacoes, p.ex. com JWT, mais complexas
+/// TODO: lidar com Autorizacoeses e Autenticacoes, p.ex. com JWT, mais complexas
 /// </summary>
+[ApiController]
 [Route("api/[controller]")]
 public class UserController(AppDbContext context) : ControllerBase
 {
@@ -31,8 +33,9 @@ public class UserController(AppDbContext context) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<User>> Post(User user)
+    public async Task<ActionResult<User>> Post(UserDto userDto)
     {
+        var user = new User(userDto.Email, userDto.Password, userDto.Role);
         _context.User.Add(user);
         await _context.SaveChangesAsync();
 
@@ -40,8 +43,11 @@ public class UserController(AppDbContext context) : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Put(int id, User user)
+    public async Task<IActionResult> Put(int id, UserDto userDto)
     {
+
+        var user = new User(userDto.Email, userDto.Password, userDto.Role);
+
         if (id != user.Id)
             return BadRequest();
 

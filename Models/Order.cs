@@ -12,6 +12,7 @@ public class Order
     public int Id { get; private set; }
     public ICollection<ItemOrder> ItemOrder { get; private set; } = [];
     public int OrderMakerId { get; private set; }
+    [System.Text.Json.Serialization.JsonIgnore]
     public User OrderMaker { get; private set; } = null!;
     public double TotalValue { get; private set; }
 

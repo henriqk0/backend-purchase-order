@@ -16,12 +16,27 @@ else
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connection));
+    options.UseSqlServer(connection, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure();
+    }));
 
 builder.Services.AddScoped<backend_purchase_order.Services.OrderService>();
 builder.Services.AddScoped<backend_purchase_order.Services.OrderActionHistoryService>();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
+
+// builder.Services.AddHttpsRedirection(options =>
+// {
+//     options.HttpsPort = 7079;
+// });
 
 var app = builder.Build();
+
+app.MapControllers();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -29,6 +44,6 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.Run();

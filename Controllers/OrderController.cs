@@ -1,6 +1,5 @@
 using backend_purchase_order.Models;
 using backend_purchase_order.Models.DTOs;
-using backend_purchase_order.Models.Enums;
 using backend_purchase_order.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +9,7 @@ namespace backend_purchase_order.Controllers;
 /// <summary>
 /// Classe para controle dos endpoints relativos aos pedidos
 /// </summary>
+[ApiController]
 [Route("api/[controller]")]
 public class OrderController(OrderService orderService) : ControllerBase
 {

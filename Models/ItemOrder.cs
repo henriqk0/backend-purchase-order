@@ -8,9 +8,12 @@ public class ItemOrder
 {
     public int Id { get; private set; }
     public int OrderId { get; private set; }
+    [System.Text.Json.Serialization.JsonIgnore]
     public Order Order { get; private set; } = null!;
 
     public int ItemId { get; private set; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
     public Item Item { get; private set; } = null!;
 
     public int Quantity { get; private set; }

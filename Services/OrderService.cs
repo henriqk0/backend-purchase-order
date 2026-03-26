@@ -49,12 +49,16 @@ public class OrderService(AppDbContext context, OrderActionHistoryService orderA
 
     public async Task<IEnumerable<Order>> GetAllOrdersAsync()
     {
-        return await _context.Order.ToListAsync();
+        return await _context.Order
+            .Include(o => o.ItemOrder)
+            .ToListAsync();
     }
 
     public async Task<Order?> GetOrderByIdAsync(int id)
     {
-        return await _context.Order.FindAsync(id);
+        return await _context.Order
+            .Include(o => o.ItemOrder)
+            .FirstOrDefaultAsync(o => o.Id == id);
     }
 
     public async Task UpdateOrderAsync(int id, Order order)

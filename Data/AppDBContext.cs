@@ -20,8 +20,7 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<OrderActionHistory>()
-            .HasIndex(io => new { io.UserId, io.OrderId })
-            .IsUnique();
+            .HasIndex(io => new { io.UserId, io.OrderId });
 
         modelBuilder.Entity<OrderActionHistory>()
             .HasOne(oah => oah.Order)

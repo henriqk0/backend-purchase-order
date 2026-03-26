@@ -9,15 +9,17 @@ public class Item
     public int Id { get; private set; }
     public double Value { get; private set; }
     public string Name { get; private set; } = null!;
+    [System.Text.Json.Serialization.JsonIgnore]
     public ICollection<ItemOrder> ItemOrder { get; private set; } = [];
 
     public Item() { }
 
     // Os items não podem ter o preço nulo ou negativo
-    public Item(int value)
+    public Item(int value, string name)
     {
         if (value <= 0)
             throw new ArgumentException("Invalid item value");
         Value = value;
+        Name = name;
     }
 }
