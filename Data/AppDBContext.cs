@@ -28,5 +28,11 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(oah => oah.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OrderActionHistory>()
+            .HasOne(oah => oah.ResponsibleUser)
+            .WithMany()
+            .HasForeignKey(oah => oah.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
