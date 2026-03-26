@@ -61,9 +61,27 @@ public class OrderService(AppDbContext context, OrderActionHistoryService orderA
             .FirstOrDefaultAsync(o => o.Id == id);
     }
 
-    public async Task UpdateOrderAsync(int id, Order order)
+    public async Task UpdateOrderAsync(int id, OrderUpdateDto orderDto)
     {
-        _context.Entry(order).State = EntityState.Modified;
+        var order = await _context.Order
+            .Include(o => o.ItemOrder)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (order == null)
+            throw new ArgumentException($"Order with ID {id} does not exist");
+
+        var itemsForOrder = new List<(Item item, int quantity)>();
+
+        foreach (var orderItemDto in orderDto.Items)
+        {
+            var item = await _context.Item.FindAsync(orderItemDto.ItemId)
+                ?? throw new ArgumentException($"Item with ID {orderItemDto.ItemId} does not exist");
+
+            itemsForOrder.Add((item, orderItemDto.Quantity));
+        }
+
+        order.UpdateItems(itemsForOrder);
+
         await _context.SaveChangesAsync();
     }
 

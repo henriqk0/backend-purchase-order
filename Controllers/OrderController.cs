@@ -49,14 +49,15 @@ public class OrderController(OrderService orderService) : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Put(int id, Order order)
+    public async Task<IActionResult> Put(int id, OrderUpdateDto orderDto)
     {
-        if (id != order.Id)
-            return BadRequest();
-
         try
         {
-            await _orderService.UpdateOrderAsync(id, order);
+            await _orderService.UpdateOrderAsync(id, orderDto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (DbUpdateConcurrencyException)
         {
