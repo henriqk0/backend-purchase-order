@@ -15,7 +15,12 @@ public class Item
     public Item() { }
 
     // Os items não podem ter o preço nulo ou negativo
-    public Item(int value, string name)
+    public Item(double value, string name)
+    {
+        Update(value, name);
+    }
+
+    public void Update(double value, string name)
     {
         if (value <= 0)
             throw new ArgumentException("Invalid item value");

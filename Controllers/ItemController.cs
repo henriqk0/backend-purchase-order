@@ -35,7 +35,7 @@ public class ItemController(AppDbContext context) : ControllerBase
     public async Task<ActionResult<Item>> Post(ItemDto itemDto)
 
     {
-        var item = new Item((int)itemDto.Value, itemDto.Name);
+        var item = new Item(itemDto.Value, itemDto.Name);
 
         _context.Item.Add(item);
         await _context.SaveChangesAsync();
@@ -46,12 +46,12 @@ public class ItemController(AppDbContext context) : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Put(int id, ItemDto itemDto)
     {
-        var item = new Item((int)itemDto.Value, itemDto.Name);
+        var item = await _context.Item.FindAsync(id);
 
-        if (id != item.Id)
-            return BadRequest();
+        if (item == null)
+            return NotFound();
 
-        _context.Entry(item).State = EntityState.Modified;
+        item.Update(itemDto.Value, itemDto.Name);
 
         try
         {

@@ -45,13 +45,14 @@ public class UserController(AppDbContext context) : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Put(int id, UserDto userDto)
     {
+        var user = await _context.User.FindAsync(id);
 
-        var user = new User(userDto.Email, userDto.Password, userDto.Role);
+        if (user == null)
+            return NotFound();
 
-        if (id != user.Id)
-            return BadRequest();
-
-        _context.Entry(user).State = EntityState.Modified;
+        user.SetEmail(userDto.Email);
+        user.SetPassword(userDto.Password);
+        user.SetRole(userDto.Role);
 
         try
         {

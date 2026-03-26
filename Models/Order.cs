@@ -34,6 +34,21 @@ public class Order
         OrderMakerId = orderMakerId;
     }
 
+    public void UpdateItems(IEnumerable<(Item item, int quantity)> items)
+    {
+        if (items == null || !items.Any())
+        {
+            throw new ArgumentException("Order needs to have at least 1 item");
+        }
+
+        ItemOrder.Clear();
+        foreach (var item in items)
+        {
+            ItemOrder.Add(new ItemOrder(this, item.item, item.quantity));
+        }
+        CalculateTotalValue();
+    }
+
     private void CalculateTotalValue()
     {
         TotalValue = ItemOrder.Sum(io => io.Item.Value * io.Quantity);
