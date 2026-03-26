@@ -5,7 +5,7 @@ Backend em .NET para ordens de compra empresariais relacionado a um teste técni
 ## Pré-requisitos
 
 - [.NET SDK](https://dotnet.microsoft.com/download) instalado em sua máquina.
-- Acesso ao banco de dados Azure SQL especificado.
+- Acesso ao banco de dados SQLServer especificado.
 
 ## Como Executar Localmente
 
@@ -19,25 +19,19 @@ Siga estas etapas para executar a aplicação em sua máquina local e acessar os
    ```
 
 2. **Configure a String de Conexão do Banco de Dados:**
-   A aplicação requer a `AZURE_SQL_CONNECTIONSTRING` para conectar-se ao banco de dados. Em um ambiente de desenvolvimento, você pode definir isso por meio de variáveis de ambiente ou logando via azure cli.
+   A aplicação requer a `DefaultConnection` para conectar-se ao banco de dados. No ambiente de desenvolvimento,
+   que é o caso desta aplicação, o banco foi utilizado via Conteiner Docker do SQLServer. Neste caso, o computador
+   precisa ter o Docker instalado para acessa-lo via CLI.
 
-   **Linux / macOS:**
+   **Acesso via Docker:**
 
-   ```bash
-   export ConnectionStrings__AZURE_SQL_CONNECTIONSTRING="Your_Database_Connection_String_Here"
-   # Ou
-   ```
+   ```zsh
+      docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=SenhaForte123!' -p 1433:1433 --name sqlserver -d mcr.microsoft.com/mssql/server:2022-latest
+      ## Em seguida:
+      docker exec -it sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'SenhaForte123!'
 
-   **Windows (Prompt de Comando):**
-
-   ```cmd
-   set ConnectionStrings__AZURE_SQL_CONNECTIONSTRING="Your_Database_Connection_String_Here"
-   ```
-
-   **Windows (PowerShell):**
-
-   ```powershell
-   $env:ConnectionStrings__AZURE_SQL_CONNECTIONSTRING="Your_Database_Connection_String_Here"
+      CREATE DATABASE MeuBanco;
+      GO
    ```
 
    _(Alternativamente, você pode criar/editar o arquivo `appsettings.Development.json` e adicionar a string de conexão sob `ConnectionStrings`)_
