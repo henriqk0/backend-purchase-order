@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using backend_purchase_order.Models;
 using backend_purchase_order.Models.DTOs;
 using backend_purchase_order.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +11,7 @@ namespace backend_purchase_order.Controllers;
 /// <summary>
 /// Classe para controle dos endpoints relativos aos pedidos
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class OrderController(OrderService orderService) : ControllerBase
@@ -38,7 +41,13 @@ public class OrderController(OrderService orderService) : ControllerBase
     {
         try
         {
-            var order = await _orderService.CreateOrderAsync(orderDto);
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+            {
+                return Unauthorized();
+            }
+
+            var order = await _orderService.CreateOrderAsync(userId, orderDto);
 
             return CreatedAtAction(nameof(Get), new { id = order.Id }, order);
         }

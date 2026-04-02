@@ -1,5 +1,6 @@
 using backend_purchase_order.Models;
 using backend_purchase_order.Models.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace backend_purchase_order.Controllers;
 /// <summary>
 /// Classe para controle dos endpoints relativos aos itens
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ItemController(AppDbContext context) : ControllerBase

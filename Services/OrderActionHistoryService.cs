@@ -38,7 +38,7 @@ public class OrderActionHistoryService(AppDbContext context)
     /// <param name="approverActionDto">Dto contendo o id do Pedido, o id do Usuário, o papel do Usuário e o tipo da ação</param>
     /// <returns>O objeto criado que representa a ação tomada no pedido pelo aprovador</returns>
     /// <exception cref="ArgumentException"></exception>
-    public async Task<OrderActionHistory> RecordApproverAction(RecordApproverActionDto approverActionDto)
+    public async Task<OrderActionHistory> RecordApproverAction(int userId, RecordApproverActionDto approverActionDto)
     {
         var lastActionAtOrder = await _context.OrderActionHistory
             .Include(orderActHist => orderActHist.ResponsibleUser)
@@ -73,19 +73,19 @@ public class OrderActionHistoryService(AppDbContext context)
         if (userRoleFromDTO == userRoleInLastOrderAction || userRoleFromDTO != userRoleInLastOrderAction + 1)
             throw new ArgumentException("Action cannot be taken before the lower hierarchy");
 
-        var approverOrderHistoryAction = await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, approverActionDto.ActionType);
+        var approverOrderHistoryAction = await RecordActionInHistoryNow(approverActionDto.OrderId, userId, approverActionDto.ActionType);
 
         // Se o pedido for de aprovação, então podemos concluí-lo dependendo das aprovações anteriores:
         if (approverActionDto.ActionType == ActionType.Approbation)
             // Se o preco for inferior a 100, também conclui o pedido
             if (price <= 100)
-                await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, ActionType.Concluison);
+                await RecordActionInHistoryNow(approverActionDto.OrderId, userId, ActionType.Concluison);
             // Caso caso esteja entre 100.00000...1 e 1000, e o setor de Suprimentos já aprovou
             else if (price <= 1000 && userRoleInLastOrderAction == UserRole.SupplyDepartment)
-                await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, ActionType.Concluison);
+                await RecordActionInHistoryNow(approverActionDto.OrderId, userId, ActionType.Concluison);
             // Caso contrário e o diretor é o último a aprovar, então também podemos concluir o pedido. 
             else if (userRoleInLastOrderAction == UserRole.Manager)
-                await RecordActionInHistoryNow(approverActionDto.OrderId, approverActionDto.ActionMakerId, ActionType.Concluison);
+                await RecordActionInHistoryNow(approverActionDto.OrderId, userId, ActionType.Concluison);
 
         return approverOrderHistoryAction;
     }
@@ -93,11 +93,12 @@ public class OrderActionHistoryService(AppDbContext context)
     /// <summary>
     /// Realiza as regras de negócio relativas ao colaborador (só pode criar ou reenviar pedidos)
     /// </summary>
-    /// <param name="collaboratorActionDto">Dto contendo o id do Pedido, o id do Usuário e o tipo da ação</param>
+    /// <param name="userId">Id do Usuário</param>
+    /// <param name="collaboratorActionDto">Dto contendo o id do Pedido e o tipo da ação</param>
     /// <returns>O objeto criado que representa a ação tomada no pedido pelo aprovador</returns>
     /// <exception cref="ArgumentException">Verifica o tipo de ação do parêmetro e se é compatível com ações passadas
     /// neste mesmo pedido</exception>
-    public async Task<OrderActionHistory> RecordCollaboratorAction(RecordActionDto collaboratorActionDto)
+    public async Task<OrderActionHistory> RecordCollaboratorAction(int userId, RecordActionDto collaboratorActionDto)
     {
         var lastActionAtOrder = await _context.OrderActionHistory
             .Where(orderActHist => orderActHist.OrderId == collaboratorActionDto.OrderId)
@@ -118,7 +119,7 @@ public class OrderActionHistoryService(AppDbContext context)
             throw new ArgumentException("Invalid action");
 
         var approverOrderHistoryAction = await RecordActionInHistoryNow(
-            collaboratorActionDto.OrderId, collaboratorActionDto.ActionMakerId, collaboratorActionDto.ActionType
+            collaboratorActionDto.OrderId, userId, collaboratorActionDto.ActionType
         );
 
         return approverOrderHistoryAction;
@@ -127,13 +128,14 @@ public class OrderActionHistoryService(AppDbContext context)
     /// <summary>
     /// Registra a ação de acordo com o tipo do usuário e tipo de ação no DTO
     /// </summary>
-    /// <param name="recordActionDto">DTO agnostico ao tipo do usuario, contendo id do usuario, id do pedido e acao
+    /// <param name="userId">Id do usuario</param>
+    /// <param name="recordActionDto">DTO agnostico ao tipo do usuario, contendo id do pedido e acao
     /// </param>
     /// <returns>Objeto OrderActionHistory</returns>
     /// <exception cref="ArgumentException">Usuario ou Pedido invalidos</exception>
-    public async Task<OrderActionHistory> RecordAgnosticAction(RecordActionDto recordActionDto)
+    public async Task<OrderActionHistory> RecordAgnosticAction(int userId, RecordActionDto recordActionDto)
     {
-        var user = await _context.User.FindAsync(recordActionDto.ActionMakerId);
+        var user = await _context.User.FindAsync(userId);
         var order = await _context.Order.FindAsync(recordActionDto.OrderId);
 
         // Levanta um erro se o usuário ou o pedido não existam após as consultas acima
@@ -152,17 +154,16 @@ public class OrderActionHistoryService(AppDbContext context)
         {
             if (user.Role == UserRole.Collaborator)
             {
-                orderActionHistory = await RecordCollaboratorAction(recordActionDto);
+                orderActionHistory = await RecordCollaboratorAction(userId, recordActionDto);
             }
             else
             {
                 var approverActionDto = new RecordApproverActionDto(
-                    recordActionDto.ActionMakerId,
                     recordActionDto.OrderId,
                     recordActionDto.ActionType,
                     user.Role
                 );
-                orderActionHistory = await RecordApproverAction(approverActionDto);
+                orderActionHistory = await RecordApproverAction(userId, approverActionDto);
             }
         }
         else

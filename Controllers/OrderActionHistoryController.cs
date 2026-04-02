@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using backend_purchase_order.Models;
 using backend_purchase_order.Models.DTOs;
 using backend_purchase_order.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +12,7 @@ namespace backend_purchase_order.Controllers;
 /// Classe para controle dos endpoints relativos ao modelo OrderActionHistory
 /// </summary>
 /// 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class OrderActionHistoryController(
@@ -33,7 +36,13 @@ public class OrderActionHistoryController(
     {
         try
         {
-            var orderActionHistory = await _orderActionHistoryService.RecordAgnosticAction(orderActionDto);
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+            {
+                return Unauthorized();
+            }
+
+            var orderActionHistory = await _orderActionHistoryService.RecordAgnosticAction(userId, orderActionDto);
 
             return CreatedAtAction(nameof(Get), new { id = orderActionHistory.Id }, orderActionHistory);
         }

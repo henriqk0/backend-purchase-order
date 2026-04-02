@@ -1,5 +1,6 @@
 using backend_purchase_order.Models;
 using backend_purchase_order.Models.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace backend_purchase_order.Controllers;
 /// Classe para controle dos endpoints relativos aos usuarios
 /// TODO: lidar com Autorizacoeses e Autenticacoes, p.ex. com JWT, mais complexas
 /// </summary>
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class UserController(AppDbContext context) : ControllerBase
@@ -30,16 +32,6 @@ public class UserController(AppDbContext context) : ControllerBase
             return NotFound();
 
         return user;
-    }
-
-    [HttpPost]
-    public async Task<ActionResult<User>> Post(UserDto userDto)
-    {
-        var user = new User(userDto.Email, userDto.Password, userDto.Role);
-        _context.User.Add(user);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
     }
 
     [HttpPut("{id}")]

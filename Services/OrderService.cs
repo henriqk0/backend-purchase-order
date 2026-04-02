@@ -17,9 +17,9 @@ public class OrderService(AppDbContext context, OrderActionHistoryService orderA
     /// <param name="orderDto">Paramentro contendo o Id do Usuário criador do pedido e uma lista de itens</param>
     /// <returns>O objeto Order Criado</returns>
     /// <exception cref="ArgumentException">Se o usuario do DTO nao exitir e nem ser colaborador ou se algum item nao existir</exception>
-    public async Task<Order> CreateOrderAsync(OrderCreateDto orderDto)
+    public async Task<Order> CreateOrderAsync(int userId, OrderCreateDto orderDto)
     {
-        var user = await _context.User.FindAsync(orderDto.OrderMakerId);
+        var user = await _context.User.FindAsync(userId);
 
         if (user == null || user.Role != UserRole.Collaborator)
             throw new ArgumentException("Only existing collaborators can create orders.");
@@ -34,15 +34,15 @@ public class OrderService(AppDbContext context, OrderActionHistoryService orderA
             itemsForOrder.Add((item, orderItemDto.Quantity));
         }
 
-        var order = new Order(itemsForOrder, orderDto.OrderMakerId);
+        var order = new Order(itemsForOrder, userId);
 
         _context.Order.Add(order);
 
         await _context.SaveChangesAsync();
 
-        var collaboratorActionDto = new RecordActionDto(order.OrderMakerId, order.Id, ActionType.Creation);
+        var collaboratorActionDto = new RecordActionDto(order.Id, ActionType.Creation);
 
-        await _orderHistoryService.RecordAgnosticAction(collaboratorActionDto);
+        await _orderHistoryService.RecordAgnosticAction(userId, collaboratorActionDto);
 
         return order;
     }
