@@ -42,7 +42,7 @@ public class OrderService(AppDbContext context, OrderActionHistoryService orderA
 
         var collaboratorActionDto = new RecordActionDto(order.Id, ActionType.Creation);
 
-        await _orderHistoryService.RecordAgnosticAction(userId, collaboratorActionDto);
+        await _orderHistoryService.RecordCollaboratorAction(userId, collaboratorActionDto);
 
         return order;
     }
